@@ -7,10 +7,11 @@ PORT = int(os.environ.get("PORT", 10000))
 
 connected = set()
 
-async def handler(ws):
+async def handler(ws, path):
     connected.add(ws)
     try:
         async for msg in ws:
+            # broadcast
             for c in connected:
                 if c != ws:
                     await c.send(msg)
@@ -18,8 +19,9 @@ async def handler(ws):
         connected.remove(ws)
 
 async def main():
+    print(f"Iniciando servidor WebSocket em ws://{HOST}:{PORT}")
     async with websockets.serve(handler, HOST, PORT):
-        print(f"Servidor WS em ws://{HOST}:{PORT}")
-        await asyncio.Future()  # Mantém rodando
+        await asyncio.Future()  # mantém o servidor rodando
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
