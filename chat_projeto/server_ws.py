@@ -2,16 +2,16 @@
 import asyncio
 import json
 import websockets
+import os
 
 HOST = "0.0.0.0"
-PORT = 6789
+PORT = int(os.environ.get("PORT", 10000))  # Render define a PORT automaticamente
 
 connected = {}  # websocket -> nick
 
 
 async def handler(ws):
     try:
-        # Primeiro pacote: JOIN
         raw = await ws.recv()
         obj = json.loads(raw)
 
@@ -22,16 +22,14 @@ async def handler(ws):
             }))
             return
 
-        nick = obj["nick"][:32]  # limitar tamanho do nick
+        nick = obj["nick"][:32]
         connected[ws] = nick
 
-        # Avisar entrada
         await broadcast({
             "type": "system",
             "text": f"** {nick} entrou **"
         })
 
-        # Loop principal de mensagens
         async for msg in ws:
             try:
                 data = json.loads(msg)
@@ -47,11 +45,10 @@ async def handler(ws):
                     "text": "Comando inválido"
                 }))
 
-    except websockets.ConnectionClosed:
+    except:
         pass
 
     finally:
-        # Se o cliente estava conectado, remover
         if ws in connected:
             name = connected.pop(ws)
             await broadcast({
@@ -61,16 +58,13 @@ async def handler(ws):
 
 
 async def broadcast(obj):
-    """Envia mensagem para todos os clientes conectados."""
     if not connected:
         return
-
     message = json.dumps(obj, ensure_ascii=False)
     await asyncio.gather(*(safe_send(w, message) for w in list(connected)))
 
 
 async def safe_send(ws, message):
-    """Envia mensagem sem interromper em caso de erro."""
     try:
         await ws.send(message)
     except:
@@ -78,9 +72,9 @@ async def safe_send(ws, message):
 
 
 async def main():
-    print(f"Servidor WebSocket rodando em ws://{HOST}:{PORT}")
+    print(f"Servidor WebSocket rodando em ws://0.0.0.0:{PORT}")
     async with websockets.serve(handler, HOST, PORT):
-        await asyncio.Future()  # mantém servidor ativo
+        await asyncio.Future()
 
 
 if __name__ == "__main__":
